@@ -23,9 +23,11 @@ window.addEventListener('mouseup', () => isClicking = false);
 window.addEventListener('touchstart', () => isClicking = true, {passive: true});
 window.addEventListener('touchend', () => isClicking = false, {passive: true});
 
+let targetShipX = width / 2;
 let shipX = width / 2;
-window.addEventListener('mousemove', e => shipX = e.clientX);
-window.addEventListener('touchmove', e => shipX = e.touches[0].clientX, {passive: true});
+let shipRoll = 0;
+window.addEventListener('mousemove', e => targetShipX = e.clientX);
+window.addEventListener('touchmove', e => targetShipX = e.touches[0].clientX, {passive: true});
 
 let actx;
 function sfx(type) {
@@ -102,7 +104,8 @@ function spawnEnemy() {
             y: -50,
             hp: 1 + Math.floor(wave / 3),
             t: Math.random() * 100,
-            flash: 0
+            flash: 0,
+            scale: 0
         });
     } else if (r < 0.75 && !bossActive && wave > 2) {
         enemies.push({
@@ -111,15 +114,27 @@ function spawnEnemy() {
             y: -50,
             hp: 2 + Math.floor(wave / 4),
             t: 0,
-            flash: 0
+            flash: 0,
+            scale: 0
         });
     } else if (!bossActive) {
         let pts = [];
+        let craters = [];
         let verts = 7 + Math.floor(Math.random() * 6);
+        let maxR = 15;
         for(let i = 0; i < verts; i++) {
             let a = (i / verts) * Math.PI * 2;
             let r = 15 + Math.random() * 18;
+            if (r > maxR) maxR = r;
             pts.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
+        }
+        let numCraters = 2 + Math.floor(Math.random() * 3);
+        for(let i = 0; i < numCraters; i++) {
+            craters.push({
+                x: (Math.random() - 0.5) * (maxR * 0.8),
+                y: (Math.random() - 0.5) * (maxR * 0.8),
+                r: 2 + Math.random() * 5
+            });
         }
         
         enemies.push({
@@ -132,7 +147,9 @@ function spawnEnemy() {
             rot: 0,
             rs: (Math.random() - 0.5) * 0.1,
             flash: 0,
+            scale: 0,
             pts: pts,
+            craters: craters,
             bg: `hsl(0, 0%, ${15 + Math.random() * 15}%)`
         });
     }
@@ -149,7 +166,8 @@ function spawnBoss() {
         maxHp: max,
         t: 0,
         phase: 1,
-        flash: 0
+        flash: 0,
+        scale: 0
     });
 }
 
@@ -168,7 +186,7 @@ function explode(x, y, color, count) {
 }
 
 function popText(x, y, text, color = '#fff') {
-    floatingTexts.push({ x, y, text, color, life: 1, vy: -1 });
+    floatingTexts.push({ x, y, text, color, life: 1, vy: -1.5, scale: 0.1 });
 }
 
 function handleGameOver() {
@@ -204,6 +222,12 @@ function loop() {
     vy += 1.2; 
     vy *= 0.88; 
     
+    let dx = targetShipX - shipX;
+    shipX += dx * 0.15;
+    shipRoll = dx * 0.015;
+    if (shipRoll > 0.5) shipRoll = 0.5;
+    if (shipRoll < -0.5) shipRoll = -0.5;
+
     shipY += vy;
     if (shipY > height - 60) { shipY = height - 60; vy = 0; }
     if (shipY < 60) { shipY = 60; vy = 0; }
@@ -226,18 +250,6 @@ function loop() {
         ctx.fillRect(s.x, s.y, s.s, s.s);
     });
 
-    if (vy < -2 || spreadTimer > 0) {
-        particles.push({
-            x: shipX + (Math.random() - 0.5) * 12,
-            y: shipY + 15,
-            vx: (Math.random() - 0.5) * 3,
-            vy: Math.random() * 6 + 5,
-            life: 0.8,
-            color: spreadTimer > 0 ? '#0f0' : (Math.random() > 0.5 ? '#0ff' : '#08f'),
-            size: Math.random() * 5 + 2
-        });
-    }
-
     if (spreadTimer > 0) spreadTimer--;
 
     let fireRate = keys['Space'] || isClicking ? 5 : 20;
@@ -254,7 +266,7 @@ function loop() {
     if (frame % spawnRate === 0 && !bossActive) spawnEnemy();
 
     if (frame > 0 && frame % 600 === 0) {
-        powerups.push({ x: Math.random() * (width - 40) + 20, y: -20, vy: 2 });
+        powerups.push({ x: Math.random() * (width - 40) + 20, y: -20, vy: 2, scale: 0 });
     }
 
     let expectedWave = Math.floor(score / 500) + 1;
@@ -268,11 +280,19 @@ function loop() {
     for (let i = powerups.length - 1; i >= 0; i--) {
         let p = powerups[i];
         p.y += p.vy;
+        if (p.scale < 1) p.scale += 0.1;
+        
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(p.scale, p.scale);
         ctx.fillStyle = '#0f0';
-        ctx.fillRect(p.x - 10, p.y - 10, 20, 20);
+        ctx.fillRect(-10, -10, 20, 20);
         ctx.fillStyle = '#000';
-        ctx.font = '16px monospace';
-        ctx.fillText('S', p.x - 5, p.y + 5);
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('S', 0, 0);
+        ctx.restore();
 
         if (Math.hypot(shipX - p.x, shipY - p.y) < 30) {
             sfx('powerup');
@@ -306,30 +326,39 @@ function loop() {
         let e = enemies[i];
         let eRadius = 20;
         if (e.flash > 0) e.flash--;
+        if (e.scale < 1) e.scale += 0.05;
 
         if (e.type === 'fighter') {
             e.y += 3 + wave * 0.3;
             e.x += Math.sin(e.t * 0.05) * 4;
             e.t++;
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.scale(e.scale, e.scale);
             ctx.fillStyle = e.flash > 0 ? '#fff' : '#f0f';
             ctx.beginPath();
-            ctx.moveTo(e.x, e.y + 15);
-            ctx.lineTo(e.x - 15, e.y - 15);
-            ctx.lineTo(e.x + 15, e.y - 15);
+            ctx.moveTo(0, 15);
+            ctx.lineTo(-15, -15);
+            ctx.lineTo(15, -15);
             ctx.fill();
+            ctx.restore();
         } else if (e.type === 'seeker') {
             eRadius = 15;
             e.y += 2 + wave * 0.2;
             e.x += (shipX - e.x) * 0.02; 
             e.t += 0.1;
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.scale(e.scale, e.scale);
             ctx.fillStyle = e.flash > 0 ? '#fff' : '#f80';
             ctx.beginPath();
-            ctx.arc(e.x, e.y, eRadius, 0, Math.PI * 2);
+            ctx.arc(0, 0, eRadius, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#fff';
             ctx.beginPath();
-            ctx.arc(e.x, e.y, eRadius * Math.abs(Math.sin(e.t)), 0, Math.PI * 2);
+            ctx.arc(0, 0, eRadius * Math.abs(Math.sin(e.t)), 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         } else if (e.type === 'asteroid') {
             e.x += e.vx;
             e.y += e.vy + wave * 0.2;
@@ -339,6 +368,7 @@ function loop() {
             ctx.save();
             ctx.translate(e.x, e.y);
             ctx.rotate(e.rot);
+            ctx.scale(e.scale, e.scale);
             
             ctx.fillStyle = e.flash > 0 ? '#fff' : e.bg;
             ctx.strokeStyle = e.flash > 0 ? '#fff' : '#aaa';
@@ -352,11 +382,21 @@ function loop() {
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
+
+            ctx.fillStyle = e.flash > 0 ? '#fff' : 'rgba(0, 0, 0, 0.4)';
+            ctx.strokeStyle = e.flash > 0 ? '#fff' : '#666';
+            ctx.lineWidth = 1;
+            e.craters.forEach(c => {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+            
             ctx.restore();
             
         } else if (e.type === 'boss') {
             eRadius = 50;
-            
             if (e.phase === 1 && e.hp < e.maxHp / 2) {
                 e.phase = 2;
                 explode(e.x, e.y, '#f80', 50);
@@ -383,8 +423,12 @@ function loop() {
             }
             e.t++;
             
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.scale(e.scale, e.scale);
             ctx.fillStyle = e.flash > 0 ? '#fff' : (e.phase === 2 ? '#f80' : '#f00');
-            ctx.fillRect(e.x - 60, e.y - 30, 120, 60);
+            ctx.fillRect(-60, -30, 120, 60);
+            ctx.restore();
         }
 
         if (Math.hypot(shipX - e.x, shipY - e.y) < eRadius + 10) {
@@ -458,34 +502,58 @@ function loop() {
     }
     
     ctx.globalAlpha = 1;
-    ctx.font = '20px monospace';
+    ctx.font = 'bold 20px monospace';
     ctx.textAlign = 'center';
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.y += ft.vy;
         ft.life -= 0.02;
+        if (ft.scale < 1) ft.scale += 0.2;
+        ctx.save();
+        ctx.translate(ft.x, ft.y);
+        ctx.scale(ft.scale, ft.scale);
         ctx.globalAlpha = Math.max(0, ft.life);
         ctx.fillStyle = ft.color;
-        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.fillText(ft.text, 0, 0);
+        ctx.restore();
         if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
     ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(shipX, shipY);
+    ctx.rotate(shipRoll);
+
+    let thrustLength = spreadTimer > 0 ? 25 : 15;
+    if (vy < -2) thrustLength += Math.random() * 15 + Math.abs(vy); 
+    
+    ctx.fillStyle = '#f80';
+    ctx.beginPath();
+    ctx.moveTo(-6, 12);
+    ctx.lineTo(6, 12);
+    ctx.lineTo(0, 12 + thrustLength);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.fillStyle = spreadTimer > 0 ? '#0f0' : '#0ff';
     ctx.beginPath();
-    ctx.moveTo(shipX, shipY - 25);
-    ctx.lineTo(shipX + 20, shipY + 15);
-    ctx.lineTo(shipX + 8, shipY + 10);
-    ctx.lineTo(shipX - 8, shipY + 10);
-    ctx.lineTo(shipX - 20, shipY + 15);
+    ctx.moveTo(0, -25);
+    ctx.lineTo(20, 15);
+    ctx.lineTo(8, 10);
+    ctx.lineTo(-8, 10);
+    ctx.lineTo(-20, 15);
     ctx.closePath();
     ctx.fill();
+
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.moveTo(shipX, shipY - 12);
-    ctx.lineTo(shipX + 4, shipY + 2);
-    ctx.lineTo(shipX - 4, shipY + 2);
+    ctx.moveTo(0, -12);
+    ctx.lineTo(4, 2);
+    ctx.lineTo(-4, 2);
     ctx.closePath();
     ctx.fill();
+    
+    ctx.restore();
 
     if (shake > 0) ctx.restore();
 
