@@ -9,7 +9,12 @@ window.addEventListener('resize', () => {
 });
 
 let keys = {};
-window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+        e.preventDefault(); 
+    }
+});
 window.addEventListener('keyup', e => keys[e.code] = false);
 
 let isClicking = false;
@@ -109,16 +114,26 @@ function spawnEnemy() {
             flash: 0
         });
     } else if (!bossActive) {
+        let pts = [];
+        let verts = 7 + Math.floor(Math.random() * 6);
+        for(let i = 0; i < verts; i++) {
+            let a = (i / verts) * Math.PI * 2;
+            let r = 15 + Math.random() * 18;
+            pts.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
+        }
+        
         enemies.push({
             type: 'asteroid',
-            x: Math.random() > 0.5 ? -30 : width + 30,
+            x: Math.random() > 0.5 ? -40 : width + 40,
             y: Math.random() * (height / 2),
             hp: 3,
             vx: Math.random() > 0.5 ? 2 : -2,
             vy: 1 + Math.random(),
             rot: 0,
             rs: (Math.random() - 0.5) * 0.1,
-            flash: 0
+            flash: 0,
+            pts: pts,
+            bg: `hsl(0, 0%, ${15 + Math.random() * 15}%)`
         });
     }
 }
@@ -320,21 +335,25 @@ function loop() {
             e.y += e.vy + wave * 0.2;
             e.rot += e.rs;
             eRadius = 25;
+            
             ctx.save();
             ctx.translate(e.x, e.y);
             ctx.rotate(e.rot);
+            
+            ctx.fillStyle = e.flash > 0 ? '#fff' : e.bg;
             ctx.strokeStyle = e.flash > 0 ? '#fff' : '#aaa';
             ctx.lineWidth = 2;
+            
             ctx.beginPath();
-            ctx.moveTo(-15, -20);
-            ctx.lineTo(10, -25);
-            ctx.lineTo(25, 0);
-            ctx.lineTo(15, 20);
-            ctx.lineTo(-20, 15);
+            ctx.moveTo(e.pts[0].x, e.pts[0].y);
+            for(let p = 1; p < e.pts.length; p++) {
+                ctx.lineTo(e.pts[p].x, e.pts[p].y);
+            }
             ctx.closePath();
+            ctx.fill();
             ctx.stroke();
-            if (e.flash > 0) ctx.fill();
             ctx.restore();
+            
         } else if (e.type === 'boss') {
             eRadius = 50;
             
@@ -451,13 +470,21 @@ function loop() {
         if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
     ctx.globalAlpha = 1;
-
     ctx.fillStyle = spreadTimer > 0 ? '#0f0' : '#0ff';
     ctx.beginPath();
     ctx.moveTo(shipX, shipY - 25);
-    ctx.lineTo(shipX - 18, shipY + 15);
-    ctx.lineTo(shipX, shipY + 10);
-    ctx.lineTo(shipX + 18, shipY + 15);
+    ctx.lineTo(shipX + 20, shipY + 15);
+    ctx.lineTo(shipX + 8, shipY + 10);
+    ctx.lineTo(shipX - 8, shipY + 10);
+    ctx.lineTo(shipX - 20, shipY + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(shipX, shipY - 12);
+    ctx.lineTo(shipX + 4, shipY + 2);
+    ctx.lineTo(shipX - 4, shipY + 2);
+    ctx.closePath();
     ctx.fill();
 
     if (shake > 0) ctx.restore();
@@ -474,5 +501,3 @@ document.getElementById('startBtn').addEventListener('click', () => {
     playing = true;
     loop();
 });
-
-
