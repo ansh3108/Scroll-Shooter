@@ -15,9 +15,12 @@ window.addEventListener('keyup', e => keys[e.code] = false);
 let isClicking = false;
 window.addEventListener('mousedown', () => isClicking = true);
 window.addEventListener('mouseup', () => isClicking = false);
+window.addEventListener('touchstart', () => isClicking = true, {passive: true});
+window.addEventListener('touchend', () => isClicking = false, {passive: true});
 
 let shipX = width / 2;
 window.addEventListener('mousemove', e => shipX = e.clientX);
+window.addEventListener('touchmove', e => shipX = e.touches[0].clientX, {passive: true});
 
 let actx;
 function sfx(type) {
@@ -75,12 +78,14 @@ let bullets = [];
 let enemies = [];
 let particles = [];
 let powerups = [];
+let floatingTexts = [];
 
-const stars = Array.from({length: 150}, () => ({
+const stars = Array.from({length: 200}, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    s: Math.random() * 2 + 1,
-    speed: Math.random() * 0.8 + 0.2
+    s: Math.random() * 2.5 + 0.5,
+    speed: Math.random() * 1.5 + 0.1,
+    hue: Math.floor(Math.random() * 60) + 180 
 }));
 
 function spawnEnemy() {
@@ -91,7 +96,8 @@ function spawnEnemy() {
             x: Math.random() * (width - 60) + 30,
             y: -50,
             hp: 1 + Math.floor(wave / 3),
-            t: Math.random() * 100
+            t: Math.random() * 100,
+            flash: 0
         });
     } else if (r < 0.75 && !bossActive && wave > 2) {
         enemies.push({
@@ -99,7 +105,8 @@ function spawnEnemy() {
             x: Math.random() * width,
             y: -50,
             hp: 2 + Math.floor(wave / 4),
-            t: 0
+            t: 0,
+            flash: 0
         });
     } else if (!bossActive) {
         enemies.push({
@@ -110,19 +117,24 @@ function spawnEnemy() {
             vx: Math.random() > 0.5 ? 2 : -2,
             vy: 1 + Math.random(),
             rot: 0,
-            rs: (Math.random() - 0.5) * 0.1
+            rs: (Math.random() - 0.5) * 0.1,
+            flash: 0
         });
     }
 }
 
 function spawnBoss() {
     bossActive = true;
+    let max = 40 + (wave * 5);
     enemies.push({
         type: 'boss',
         x: width / 2,
         y: -100,
-        hp: 40 + (wave * 5),
-        t: 0
+        hp: max,
+        maxHp: max,
+        t: 0,
+        phase: 1,
+        flash: 0
     });
 }
 
@@ -131,12 +143,17 @@ function explode(x, y, color, count) {
     for(let i = 0; i < count; i++) {
         particles.push({
             x: x, y: y,
-            vx: (Math.random() - 0.5) * 12,
-            vy: (Math.random() - 0.5) * 12,
+            vx: (Math.random() - 0.5) * 16,
+            vy: (Math.random() - 0.5) * 16,
             life: 1,
-            color: color
+            color: color,
+            size: Math.random() * 4 + 2
         });
     }
+}
+
+function popText(x, y, text, color = '#fff') {
+    floatingTexts.push({ x, y, text, color, life: 1, vy: -1 });
 }
 
 function handleGameOver() {
@@ -186,24 +203,23 @@ function loop() {
         if (shake < 0.5) shake = 0;
     }
 
-    ctx.fillStyle = '#fff';
     stars.forEach(s => {
         s.y += s.speed + (vy * -0.05);
         if (s.y > height) { s.y = 0; s.x = Math.random() * width; }
         if (s.y < 0) { s.y = height; s.x = Math.random() * width; }
-        ctx.globalAlpha = s.speed;
+        ctx.fillStyle = `hsla(${s.hue}, 100%, 80%, ${s.speed / 1.5})`;
         ctx.fillRect(s.x, s.y, s.s, s.s);
     });
-    ctx.globalAlpha = 1;
 
-    if (vy < -2) {
+    if (vy < -2 || spreadTimer > 0) {
         particles.push({
-            x: shipX + (Math.random() - 0.5) * 10,
+            x: shipX + (Math.random() - 0.5) * 12,
             y: shipY + 15,
-            vx: (Math.random() - 0.5) * 2,
-            vy: Math.random() * 5 + 5,
+            vx: (Math.random() - 0.5) * 3,
+            vy: Math.random() * 6 + 5,
             life: 0.8,
-            color: Math.random() > 0.5 ? '#f80' : '#f00'
+            color: spreadTimer > 0 ? '#0f0' : (Math.random() > 0.5 ? '#0ff' : '#08f'),
+            size: Math.random() * 5 + 2
         });
     }
 
@@ -212,10 +228,10 @@ function loop() {
     let fireRate = keys['Space'] || isClicking ? 5 : 20;
     if (frame % fireRate === 0) {
         sfx('shoot');
-        bullets.push({ x: shipX, y: shipY - 20, vx: 0, vy: -18, type: 'player' });
+        bullets.push({ x: shipX, y: shipY - 20, vx: 0, vy: -22, type: 'player' });
         if (spreadTimer > 0) {
-            bullets.push({ x: shipX, y: shipY - 20, vx: -4, vy: -17, type: 'player' });
-            bullets.push({ x: shipX, y: shipY - 20, vx: 4, vy: -17, type: 'player' });
+            bullets.push({ x: shipX, y: shipY - 20, vx: -5, vy: -20, type: 'player' });
+            bullets.push({ x: shipX, y: shipY - 20, vx: 5, vy: -20, type: 'player' });
         }
     }
 
@@ -230,6 +246,7 @@ function loop() {
     if (expectedWave > wave) {
         wave = expectedWave;
         document.getElementById('wave').innerText = wave;
+        popText(width/2, height/2, `WAVE ${wave}`, '#0ff');
         if (wave % 5 === 0) spawnBoss();
     }
 
@@ -239,18 +256,19 @@ function loop() {
         ctx.fillStyle = '#0f0';
         ctx.fillRect(p.x - 10, p.y - 10, 20, 20);
         ctx.fillStyle = '#000';
-        ctx.fillText('S', p.x - 4, p.y + 4);
+        ctx.font = '16px monospace';
+        ctx.fillText('S', p.x - 5, p.y + 5);
 
         if (Math.hypot(shipX - p.x, shipY - p.y) < 30) {
             sfx('powerup');
             spreadTimer = 400;
+            popText(p.x, p.y, 'SPREAD UPG', '#0f0');
             powerups.splice(i, 1);
             continue;
         }
         if (p.y > height + 50) powerups.splice(i, 1);
     }
 
-    ctx.fillStyle = '#0ff';
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         b.x += b.vx || 0;
@@ -258,11 +276,11 @@ function loop() {
         
         if (b.type === 'player') {
             ctx.fillStyle = spreadTimer > 0 ? '#0f0' : '#0ff';
-            ctx.fillRect(b.x - 2, b.y - 10, 4, 20);
+            ctx.fillRect(b.x - 2, b.y - 12, 4, 24);
         } else {
             ctx.fillStyle = '#f00';
             ctx.beginPath();
-            ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+            ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -272,12 +290,13 @@ function loop() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let e = enemies[i];
         let eRadius = 20;
+        if (e.flash > 0) e.flash--;
 
         if (e.type === 'fighter') {
             e.y += 3 + wave * 0.3;
             e.x += Math.sin(e.t * 0.05) * 4;
             e.t++;
-            ctx.fillStyle = '#f0f';
+            ctx.fillStyle = e.flash > 0 ? '#fff' : '#f0f';
             ctx.beginPath();
             ctx.moveTo(e.x, e.y + 15);
             ctx.lineTo(e.x - 15, e.y - 15);
@@ -288,7 +307,7 @@ function loop() {
             e.y += 2 + wave * 0.2;
             e.x += (shipX - e.x) * 0.02; 
             e.t += 0.1;
-            ctx.fillStyle = '#f80';
+            ctx.fillStyle = e.flash > 0 ? '#fff' : '#f80';
             ctx.beginPath();
             ctx.arc(e.x, e.y, eRadius, 0, Math.PI * 2);
             ctx.fill();
@@ -304,7 +323,7 @@ function loop() {
             ctx.save();
             ctx.translate(e.x, e.y);
             ctx.rotate(e.rot);
-            ctx.strokeStyle = '#aaa';
+            ctx.strokeStyle = e.flash > 0 ? '#fff' : '#aaa';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(-15, -20);
@@ -314,25 +333,44 @@ function loop() {
             ctx.lineTo(-20, 15);
             ctx.closePath();
             ctx.stroke();
+            if (e.flash > 0) ctx.fill();
             ctx.restore();
         } else if (e.type === 'boss') {
             eRadius = 50;
+            
+            if (e.phase === 1 && e.hp < e.maxHp / 2) {
+                e.phase = 2;
+                explode(e.x, e.y, '#f80', 50);
+                popText(e.x, e.y, "CRITICAL!", '#f00');
+                shake = 15;
+            }
+
             if (e.y < 120) e.y += 1.5;
-            e.x = width / 2 + Math.sin(e.t * 0.02) * (width / 3);
+            
+            if (e.phase === 1) {
+                e.x = width / 2 + Math.sin(e.t * 0.02) * (width / 3);
+                if (frame % Math.max(15, 40 - wave) === 0) {
+                    bullets.push({ x: e.x - 40, y: e.y + 40, vx: 0, vy: 7, type: 'enemy' });
+                    bullets.push({ x: e.x + 40, y: e.y + 40, vx: 0, vy: 7, type: 'enemy' });
+                }
+            } else {
+                e.x = width / 2 + Math.sin(e.t * 0.04) * (width / 2.5);
+                e.y = 120 + Math.sin(e.t * 0.08) * 30;
+                if (frame % 12 === 0) {
+                    bullets.push({ x: e.x, y: e.y + 40, vx: 0, vy: 9, type: 'enemy' });
+                    bullets.push({ x: e.x, y: e.y + 40, vx: -3, vy: 8, type: 'enemy' });
+                    bullets.push({ x: e.x, y: e.y + 40, vx: 3, vy: 8, type: 'enemy' });
+                }
+            }
             e.t++;
             
-            if (frame % Math.max(15, 40 - wave) === 0) {
-                bullets.push({ x: e.x - 40, y: e.y + 40, vx: 0, vy: 7, type: 'enemy' });
-                bullets.push({ x: e.x + 40, y: e.y + 40, vx: 0, vy: 7, type: 'enemy' });
-            }
-            
-            ctx.fillStyle = '#f00';
+            ctx.fillStyle = e.flash > 0 ? '#fff' : (e.phase === 2 ? '#f80' : '#f00');
             ctx.fillRect(e.x - 60, e.y - 30, 120, 60);
         }
 
         if (Math.hypot(shipX - e.x, shipY - e.y) < eRadius + 10) {
-            shake = 25;
-            explode(shipX, shipY, '#0ff', 30);
+            shake = 30;
+            explode(shipX, shipY, '#0ff', 40);
             enemies.splice(i, 1);
             if (e.type === 'boss') bossActive = false;
             lives--;
@@ -345,8 +383,9 @@ function loop() {
             let b = bullets[j];
             if (b.type === 'player' && Math.hypot(b.x - e.x, b.y - e.y) < eRadius) {
                 e.hp--;
+                e.flash = 3;
                 bullets.splice(j, 1);
-                explode(b.x, b.y, '#ff0', 5);
+                explode(b.x, b.y, '#ff0', 3);
                 
                 if (e.hp <= 0) {
                     let eColor = '#f0f';
@@ -354,7 +393,7 @@ function loop() {
                     if (e.type === 'boss') eColor = '#f00';
                     if (e.type === 'seeker') eColor = '#f80';
                     
-                    explode(e.x, e.y, eColor, e.type === 'boss' ? 50 : 15);
+                    explode(e.x, e.y, eColor, e.type === 'boss' ? 80 : 20);
                     
                     let pts = 20;
                     if (e.type === 'boss') pts = 500;
@@ -365,17 +404,19 @@ function loop() {
                     document.getElementById('score').innerText = score;
                     if (score > hiScore) document.getElementById('hiScore').innerText = score;
                     
+                    popText(e.x, e.y, '+' + pts, '#ff0');
+                    
                     enemies.splice(i, 1);
                     if (e.type === 'boss') bossActive = false;
-                    shake = e.type === 'boss' ? 30 : 5;
+                    shake = e.type === 'boss' ? 40 : 5;
                 }
                 break;
             } else if (b.type === 'enemy' && Math.hypot(b.x - shipX, b.y - shipY) < 15) {
-                shake = 25;
+                shake = 30;
                 bullets.splice(j, 1);
                 lives--;
                 document.getElementById('lives').innerText = lives;
-                explode(shipX, shipY, '#0ff', 30);
+                explode(shipX, shipY, '#0ff', 40);
                 if (lives <= 0) handleGameOver();
             }
         }
@@ -387,20 +428,36 @@ function loop() {
         let p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.04;
+        p.vx *= 0.95; 
+        p.vy *= 0.95; 
+        p.life -= 0.03;
         ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 4, 4);
+        let s = p.size * p.life;
+        ctx.fillRect(p.x - s/2, p.y - s/2, s, s);
         if (p.life <= 0) particles.splice(i, 1);
+    }
+    
+    ctx.globalAlpha = 1;
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'center';
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ft.y += ft.vy;
+        ft.life -= 0.02;
+        ctx.globalAlpha = Math.max(0, ft.life);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = spreadTimer > 0 ? '#0f0' : '#0ff';
     ctx.beginPath();
-    ctx.moveTo(shipX, shipY - 20);
-    ctx.lineTo(shipX - 15, shipY + 15);
+    ctx.moveTo(shipX, shipY - 25);
+    ctx.lineTo(shipX - 18, shipY + 15);
     ctx.lineTo(shipX, shipY + 10);
-    ctx.lineTo(shipX + 15, shipY + 15);
+    ctx.lineTo(shipX + 18, shipY + 15);
     ctx.fill();
 
     if (shake > 0) ctx.restore();
@@ -417,7 +474,5 @@ document.getElementById('startBtn').addEventListener('click', () => {
     playing = true;
     loop();
 });
-
-
 
 

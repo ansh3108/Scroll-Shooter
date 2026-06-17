@@ -2,23 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scroll Shooter - Expansion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scroll Shooter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="crt"></div>
+    
     <div id="ui">
-        Score: <span id="score">0</span> | 
-        High: <span id="hiScore">0</span> | 
-        Lives: <span id="lives">3</span> | 
+        Score: <span id="score">0</span><br>
+        High: <span id="hiScore">0</span><br>
+        Lives: <span id="lives">3</span><br>
         Wave: <span id="wave">1</span>
     </div>
     
     <div id="menu">
         <h1>SCROLL SHOOTER</h1>
-        <p>Scroll down to thrust. Mouse to steer.</p>
-        <p>Click or Space to fire.</p>
-        <button id="startBtn">Start</button>
+        <p>Scroll/Swipe down to thrust.</p>
+        <p>Mouse/Touch to steer.</p>
+        <p>Click/Tap to fire.</p>
+        <button id="startBtn">Start Game</button>
     </div>
 
     <div id="intro" style="opacity: 0;">
@@ -30,3 +33,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

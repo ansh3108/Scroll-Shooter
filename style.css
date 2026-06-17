@@ -6,6 +6,8 @@ body {
     font-family: monospace;
     overflow-x: hidden;
     user-select: none;
+    overscroll-behavior-y: none;
+    touch-action: pan-y;
 }
 
 canvas {
@@ -17,17 +19,33 @@ canvas {
     z-index: -1;
 }
 
+#crt {
+    position: fixed;
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    z-index: 5;
+    pointer-events: none;
+}
+
 #ui {
     position: fixed;
     top: 20px;
     left: 20px;
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.5;
     pointer-events: none;
     text-shadow: 2px 2px 0 #000;
     display: none;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
     border: 1px solid #0ff;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    z-index: 4;
 }
 
 #intro {
@@ -38,6 +56,8 @@ canvas {
     text-align: center;
     pointer-events: none;
     transition: opacity 0.5s;
+    z-index: 4;
+    text-shadow: 2px 2px 0 #000;
 }
 
 #menu {
@@ -46,7 +66,7 @@ canvas {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(5, 5, 5, 0.9);
+    background: rgba(5, 5, 5, 0.95);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -55,15 +75,24 @@ canvas {
 }
 
 #menu h1 {
-    font-size: 48px;
+    font-size: 56px;
     margin-bottom: 10px;
     color: #0ff;
-    text-shadow: 0 0 10px #0ff;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    text-align: center;
+    letter-spacing: 4px;
+}
+
+#menu p {
+    text-align: center;
+    margin: 5px 0;
+    font-size: 18px;
+    color: #ccc;
 }
 
 #startBtn {
-    margin-top: 30px;
-    padding: 15px 30px;
+    margin-top: 40px;
+    padding: 15px 40px;
     font-size: 24px;
     font-family: monospace;
     background: transparent;
@@ -71,11 +100,12 @@ canvas {
     border: 2px solid #0ff;
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
 }
 
 #startBtn:hover {
     background: #0ff;
     color: #000;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
 }
-
 
