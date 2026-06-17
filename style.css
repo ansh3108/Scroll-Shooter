@@ -48,6 +48,12 @@ canvas {
     z-index: 4;
 }
 
+#combo {
+    color: #ff0;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
 #intro {
     position: fixed;
     top: 50%;
@@ -58,6 +64,26 @@ canvas {
     transition: opacity 0.5s;
     z-index: 4;
     text-shadow: 2px 2px 0 #000;
+}
+
+#warning {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: #f00;
+    text-shadow: 0 0 20px #f00;
+    pointer-events: none;
+    z-index: 6;
+    animation: flash 0.4s infinite alternate;
+    text-align: center;
+    width: 100%;
+}
+
+@keyframes flash {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 #menu {
@@ -108,4 +134,3 @@ canvas {
     color: #000;
     box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
 }
-
