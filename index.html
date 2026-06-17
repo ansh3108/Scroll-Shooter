@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scroll Shooter</title>
+    <title>Scroll Shooter - Final Build</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="crt"></div>
     
     <div id="ui">
-        Score: <span id="score">0</span><br>
+        Score: <span id="score">0</span> <span id="combo"></span><br>
         High: <span id="hiScore">0</span><br>
         Lives: <span id="lives">3</span><br>
+        Bombs: <span id="bombs">1</span><br>
         Wave: <span id="wave">1</span>
     </div>
     
@@ -21,6 +22,7 @@
         <p>Scroll/Swipe down to thrust.</p>
         <p>Mouse/Touch to steer.</p>
         <p>Click/Tap to fire.</p>
+        <p>Shift/Double-Tap for EMP Bomb.</p>
         <button id="startBtn">Start Game</button>
     </div>
 
@@ -28,9 +30,10 @@
         <p>Keep scrolling...</p>
     </div>
 
+    <div id="warning" style="display: none;">WARNING: MASS DETECTED</div>
+
     <canvas id="game"></canvas>
 
     <script src="script.js"></script>
 </body>
 </html>
-
